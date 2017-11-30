@@ -29,6 +29,7 @@ This fork has the following additional features and problem avoidances:
 	- Icon adaptations (icons not published here due to legal fears).
 	- Alive pixel on display
 	- time supervision of the last observation time to recognize failures on remote weather stations
+	- removed all unnecessary screen gimmicks to have very low screen flickering
 
 The SSID and Wifi Password must be injected by compiler command line option: 
       -DMY_SSID=YouSSID -DMY_PSK=YourWifiPW
