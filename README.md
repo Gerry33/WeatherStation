@@ -6,4 +6,31 @@ All credits go to the persons referred in the code and the header.
 
 This fork has the following additional features and problem avoidances:
 
+	- Wunderground client:
+		- Adapations using simplifications to new WG API:  winddir, pressure trend, own icons, ...
+		- HTTClient (instead of Wificlient) 
+		(Tested with ~ 10k simulated queries to an own WU simulation server. No heap or performance issues 
+		any more.
+		
+	- pressure trend icon
+	- own icons for inside/outside temperature
+	- loop () reconstruction to avoid Wifi- disconnects caused by long lasting operations
+	- MQTT support to display measures from other sensors in the network
+	- HTTP OTA firmware update
+	- Wifi username/password injected by compiler commandline
+	- NTP- time
+	- extended logging
+	- SYSLOG
+	- Timer alarm
+	- (Simple) WEB -GUI for basic configuration
+	- BMP- display only as JPG has pixel issues
+	- Arbitrary download of icons from any local/remote source
+	- Deleting  and reloading icons on request using REST Web service without restart
+	- Reset/ format SPIFF from  REST Web service
+	- Layout redesign
+	- Icon adaptations (icons not published here due to legal fears).
+	- Alive pixel on display
+	- time supervision of the last observation time to recognize failures on remote weather stations
 
+The SSID and Wifi Password must be injected by compiler command line option: 
+      -DMY_SSID=YouSSID -DMY_PSK=YourWifiPW
