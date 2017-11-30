@@ -16,7 +16,7 @@ This fork has the following additional features and problem avoidances:
 	- MQTT support to display measures from other sensors in the network
 	- HTTP OTA firmware update
 	- Wifi username/password injected by compiler commandline
-	- NTP- time
+	- NTP- time with timezone and Summer-/Wintertime detection and event
 	- extended logging
 	- SYSLOG
 	- Timer alarm
