@@ -1,11 +1,11 @@
 # ESP8266 Weatherstation with TFT Display
 
-This is another fork of the ESP8266 Weatherstation based on https://github.com/Bodmer/TFT_eSPI/tree/master/examples/320%20x%20240/weather-station-v8. All credits go to the persons referred in the code and the headers.
+This is another fork of the ESP8266 Weatherstation based on https://github.com/Bodmer/TFT_eSPI/tree/master/examples/320%20x%20240/weather-station-v8. All credits go to the persons referred in the code.
 
-This fork has the following additional features and problem avoidances:
+This fork has the following additional features:
 
 	- Wunderground client:
-		- Adapations using simplifications to new WG API:  winddir, pressure trend, own icons, ...
+		- Adpations using the new simplifications of the new WG API:  winddir, pressure trend, language specifics, ...
 		- HTTClient (instead of Wificlient) 
 		(Tested with ~ 10k simulated queries to an own WU simulation server. No heap or performance issues 
 		any more.
@@ -16,7 +16,7 @@ This fork has the following additional features and problem avoidances:
 	- MQTT support to display measures from other sensors in the network
 	- HTTP OTA firmware update
 	- Wifi username/password injected by compiler commandline
-	- NTP- time with timezone and Summer-/Wintertime detection and event
+	- NTP- time with timezone and Summer-/Wintertime detection and callback event
 	- extended logging
 	- SYSLOG
 	- Timer alarm
@@ -28,5 +28,5 @@ This fork has the following additional features and problem avoidances:
 	- Layout redesign
 	- Icon adaptations (icons not published here due to legal fears).
 	- Alive pixel on display
-	- time supervision of the last observation time to recognize failures on remote weather stations
-	- removed all unnecessary screen gimmicks to have very low screen flickering
+	- time supervision of the last remote observation time to recognize outage  on remote weather stations
+	- removed all unnecessary screen gimmicks for very low screen flickering
