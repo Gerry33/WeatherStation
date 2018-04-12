@@ -5,6 +5,8 @@
 
    For the full copyright and license information, please view the LICENSE
    file that was distributed with this source code.
+
+   Re-design by Gerd Sinne.
  */
 
 #pragma once
@@ -28,10 +30,10 @@ extern "C" {
 using namespace std;
 
 #define DEFAULT_NTP_SERVER "0.de.pool.ntp.org"  // Default NTP server. Recommended to use a NTP server closer to your location.
-#define DEFAULT_POLLING_INTERVAL 1800  // Default polling interval (seconds)
-#define NTP_MINIMUM_INTERVAL 15  // Minimum polling interval (seconds)
-#define NTP_SHORT_INTERVAL 	  3 // was: 5 pooling intervall for NTP response; 1 sec too less,
-#define NTP_SERVERS_MAXIMUM   3 // Maximum number of supported NTP servers
+// #define DEFAULT_POLLING_INTERVAL 1800  // Default polling interval (seconds)
+// #define NTP_MINIMUM_INTERVAL  15   // Minimum polling interval (seconds)
+#define NTP_SHORT_INTERVAL_DEFAULT 10  // was: 5 polling intervall for NTP response; 1 sec too less,
+#define NTP_SERVERS_MAXIMUM   	   3   // Maximum number of supported NTP servers
 
 // Events used for the callback function
 typedef enum {
@@ -44,14 +46,12 @@ typedef enum {
 
 typedef std::function<void (NTPSyncEvent_t, time_t, time_t)> onSyncEvent_t;
 
-
-
 class NTPClient {
 
 public:
         NTPClient();
         bool 		isSummertime;
-        bool 		valid;
+
 
         /**
          * @brief Sets the name of a NTP server to use.
@@ -85,14 +85,19 @@ public:
          * @param  utcOffset the UTC Offset to use (i.e. timezone). If empty, UTC will be used.
          * @return           true if successful
          */
-        bool init(char *server = (char *)DEFAULT_NTP_SERVER, int utcOffset = 1, int refreshIntervall = 86400);
-        bool init(											 int utcOffset = 1, int refreshIntervall = 86400);
+     // bool init(char *server = (char *)DEFAULT_NTP_SERVER, int utcOffset = 1, int refreshIntervall = 86400);
+        // no two overlaoded methods with different number of same parameter type possible
+        bool init( int utcOffset = 1, int refreshIntervall = 86400);
+        bool initWithoutRefresh( int  utcOffset =1 );
+
         /**
          * @brief Stops the time synchronization
          * @return true if successful
          */
         bool stop();
         bool update();
+        bool updateForced();
+
 
         /**
          * @brief Set a callback function that triggers after synchronization request.
@@ -102,6 +107,9 @@ public:
         void 		 setOnSyncEvent_cb ( onSyncEvent_t  cb) ;
         const char * getTimeDateChr	( time_t _time);
         const char * getTimeDateChr ( time_t tm, char * buf );
+        const char * getTimeZoneAsChr();
+        String 		 getTimeZoneAsStr();
+
         String 		 getTimeDateStr ( time_t  time);
 
         const char * getTimeAsChr	( time_t _time);
@@ -112,14 +120,24 @@ public:
         String  	 getWeekdayAsStr	() ;
         String  	 getMonthAsStr	() ;
         time_t 		 getTime();
+
+//	bool isInSync() const {
+//		return inSync;
+//	}
+
+time_t getLastNTPSyncTimestamp() const {
+		return _timestamp;
+	}
+
         String 		 timeStr;
-        tmElements_t 	dateTime;
-        unsigned long _timestamp;				// the current time
+        tmElements_t dateTime;
+        time_t		 _timestamp;				// the current time
 
 private:
 
+        bool 			inSync; 	// false : not in sync or sntp stopped. true: succesfully synced.
         unsigned long 	previousMillis = 0;
-        void 			syncTimeFromSNTP	();
+        bool  			syncTimeFromSNTP	();
         unsigned int 	syncIntervallCurrent ; 	//
         unsigned int 	syncIntervallExtern; 	// (long) Polling interval in secs for periodic time synchronization. set by user
 
