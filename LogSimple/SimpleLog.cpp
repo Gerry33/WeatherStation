@@ -15,6 +15,8 @@
  */
 const char * prefix [ LOGLEVEL_MAX ] = {"", "E:", "W:", "I:", "D:"};
 
+SimpleLog Logger;
+
 int  SimpleLog::begin(LOGLEVEL_t level, IPAddress syslogServer)
 {
 	int rc;
@@ -202,12 +204,11 @@ int  SimpleLog::sendUdpSyslog(const  char * msgtosend)
 		int rc 		 = _udp.endPacket();
  		delay (10);		// The ESP8266 needs a delay of at least 2ms between consecutive UDP packages
 		if (rc   == 0 ){ // nothing send
-			Serial.println("UdpSyslog not send.");
+			// Serial.println("UdpSyslog not send.");
 			return rc;
 		}
 		if (charSend != strlen(msgtosend))
 			Serial.printf("sendUdpSyslog incomplete:%d vs. %d\n", charSend, strlen(msgtosend));
-
 		return charSend;
 	}
 	return -1;

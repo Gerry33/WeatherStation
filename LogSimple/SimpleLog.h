@@ -1,9 +1,12 @@
 #ifndef LOGGING_H
 #define LOGGING_H
+
+#pragma once
+
 #include <inttypes.h>
 #include <stdarg.h>
 
-#include <WiFiUdp.h>
+#include <WiFiUdp.h> // ESP8266 Wifi
 
 #if defined(ARDUINO) && ARDUINO >= 100
 	#include "Arduino.h"
@@ -11,7 +14,9 @@
 	#include "WProgram.h"
 #endif
 
+
 extern "C" {
+
 }
 /*
 #define LOGLEVEL_QUIET        0
@@ -82,6 +87,8 @@ private:
     int   		 sendUdpSyslog		( const char * msgtosend);
 
 };
+
+extern SimpleLog Logger;
 
 #endif
 
