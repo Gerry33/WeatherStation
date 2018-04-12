@@ -20,7 +20,7 @@ This fork has the following additional features:
 	- extended logging
 	- SYSLOG
 	- Timer alarm
-	- (Simple) WEB -GUI for basic configuration
+	- WEB -GUI for basic configuration with tooltips and systemstatistics and ressources overview. See screenshot in WiKi.
 	- BMP- display only as JPG has pixel issues
 	- Arbitrary download of icons from any local/remote source
 	- Deleting  and reloading icons on request using REST Web service without restart
