@@ -21,9 +21,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 See more at http://blog.squix.ch
-
-	with adaptations by Gerry33
-
 */
 
 #pragma once
@@ -31,16 +28,18 @@ See more at http://blog.squix.ch
 #include <JsonListener.h>
 #include <JsonStreamingParser.h>
 
-#define MAX_FORECAST_PERIODS 20  // Changed from 7 to 12 to support 6 day / 2 screen forecast (Neptune)
+//  see url: http://api.../forecast10day/
+#define MAX_FORECAST_PERIODS 10  // gsi: was 20. Changed from 7 to 12 to support 6 day / 2 screen forecast (Neptune)
 								 // Changed to 20 to support max 10-day forecast returned from 'forecast10day' API (fowlerk)
 
-#define MAX_WEATHER_ALERTS 6  	 // The maximum number of concurrent weather alerts supported by the library
+// #define MAX_WEATHER_ALERTS 6  	 // The maximum number of concurrent weather alerts supported by the library
+#define MAX_WEATHER_ALERTS 3  	 // The maximum number of concurrent weather alerts supported by the library
 
 class WundergroundClient: public JsonListener {
   private:
 
 	JsonStreamingParser parser;
-	HTTPClient 			http;
+	HTTPClient 			httpClient;
 	String wuBaseUri = "http://api.wunderground.com/api/";
 
     String currentKey;
@@ -53,13 +52,13 @@ class WundergroundClient: public JsonListener {
     boolean isMetric = true;
     String currentTemp;
     // JJG added ... ////////////////////////////////// define returns /////////////////////////////////
-    String moonPctIlum;  // not used
-    String moonAge;      // make this a long?
-    String moonPhase;
-    String sunriseTime;
-    String sunsetTime;
-    String moonriseTime;
-    String moonsetTime;
+//    String moonPctIlum;  // not used
+//    String moonAge;      // make this a long?
+//    String moonPhase;
+//    String sunriseTime;
+//    String sunsetTime;
+//    String moonriseTime;
+//    String moonsetTime;
     String windSpeed;
     String windDir;
     String wind_degrees;	// gsi
@@ -90,27 +89,32 @@ class WundergroundClient: public JsonListener {
 	boolean isAlerts = false;				// Added by fowlerk
 	boolean isAlertUS = false;				// Added by fowlerk
 	boolean isAlertEU = false;				// Added by fowlerk
-    int currentForecastPeriod;
+    int 	currentForecastPeriod;
     String forecastIcon [MAX_FORECAST_PERIODS];
     String forecastTitle [MAX_FORECAST_PERIODS];	// not used
     String forecastLowTemp [MAX_FORECAST_PERIODS];
     String forecastHighTemp [MAX_FORECAST_PERIODS];
-	// fowlerk added...
+
+    String forecastDate 	[MAX_FORECAST_PERIODS/2];
 	String forecastDay 		[MAX_FORECAST_PERIODS/2];
 	String forecastWeekDay 	[MAX_FORECAST_PERIODS/2];
 	String forecastMonth 	[MAX_FORECAST_PERIODS/2];
 	String forecastText 	[MAX_FORECAST_PERIODS];
 	String PoP [MAX_FORECAST_PERIODS];
+
 	// Active alerts...added 18-Dec-2016
-	String activeAlerts [MAX_WEATHER_ALERTS];			   // For a max of 6 currently-active alerts
-	String activeAlertsMessage [MAX_WEATHER_ALERTS];	   // Alert full-text message
-	bool   activeAlertsMessageTrunc [MAX_WEATHER_ALERTS];  // Alert full-text message truncation flag
-	String activeAlertsText [MAX_WEATHER_ALERTS];		   // Alerts description text
-	String activeAlertsStart [MAX_WEATHER_ALERTS];		   // Start of alert date/time
-	String activeAlertsEnd [MAX_WEATHER_ALERTS];		   // Expiration of alert date/time
-	String activeAlertsPhenomena [MAX_WEATHER_ALERTS];	   // Alert phenomena code
-	String activeAlertsSignificance [MAX_WEATHER_ALERTS];  // Alert significance code
-	String activeAlertsAttribution [MAX_WEATHER_ALERTS];   // Alert significance code
+
+	//gsi: alerts useless for europe
+
+//	String activeAlerts [MAX_WEATHER_ALERTS];			   // For a max of 6 currently-active alerts
+//	String activeAlertsMessage [MAX_WEATHER_ALERTS];	   // Alert full-text message
+//	bool   activeAlertsMessageTrunc [MAX_WEATHER_ALERTS];  // Alert full-text message truncation flag
+//	String activeAlertsText [MAX_WEATHER_ALERTS];		   // Alerts description text
+//	String activeAlertsStart [MAX_WEATHER_ALERTS];		   // Start of alert date/time
+//	String activeAlertsEnd [MAX_WEATHER_ALERTS];		   // Expiration of alert date/time
+//	String activeAlertsPhenomena [MAX_WEATHER_ALERTS];	   // Alert phenomena code
+//	String activeAlertsSignificance [MAX_WEATHER_ALERTS];  // Alert significance code
+//	String activeAlertsAttribution [MAX_WEATHER_ALERTS];   // Alert significance code
 	int activeAlertsCnt;				   				   // Number of active alerts
 	int currentAlert;					   				   // For indexing the current active alert
 
@@ -141,6 +145,7 @@ class WundergroundClient: public JsonListener {
     String getSeconds();
     String getDate();
     String getObservationDate();
+    /*
     // JJG added ... ///////////////////function name to string ////////////////////////////
     String getMoonPctIlum();
     String getMoonAge();
@@ -149,6 +154,8 @@ class WundergroundClient: public JsonListener {
     String getSunsetTime();
     String getMoonriseTime();
     String getMoonsetTime();
+    */
+
     String getWindSpeed();
     String getWindDir();
     String getWindDegrees();

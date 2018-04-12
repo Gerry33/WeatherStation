@@ -24,19 +24,24 @@ WebResource::WebResource(){
   
 }
 
-bool WebResource::downloadFile(String url, String filename) {
+WEB_RC WebResource::downloadFile(String url, String filename)  {
+
   return downloadFile(url, filename, nullptr);
 }
+/**
+ * true: ok
+ * false: error
+ */
+WEB_RC WebResource::downloadFile(String url, String filename, ProgressCallback progressCallback) {
+	WEB_RC rc = SUCCESS;
 
-bool WebResource::downloadFile(String url, String filename, ProgressCallback progressCallback) {
-	bool rc= true;
+	this->currentURL= url;
 
     if (SPIFFS.exists(filename) == true) {
-    	// Serial.println("Found:" + filename + ". No download.");
-      return rc;
+      return IGNORED;
     }
     else
-    	Serial.println("Downloading <"  + filename + "> from <" + url +">");
+    	// Serial.println("Downloading <"  + filename + "> from <" + url +">");
 
     // wait for WiFi connection
     if((_wifiMulti.run() == WL_CONNECTED)) {
@@ -57,7 +62,7 @@ bool WebResource::downloadFile(String url, String filename, ProgressCallback pro
                 Serial.printf("SPIFFS.file open failed for <%s>\n", filename.c_str());
 //                FSInfo info;
 //                SPIFFS.info (info);
-                return false;
+                return ERROR;
             }
             // HTTP header has been send and Server response header has been handled
             Serial.printf("[HTTP] GET... code: %d\n", httpCode);
@@ -97,19 +102,16 @@ bool WebResource::downloadFile(String url, String filename, ProgressCallback pro
                     }
                     delay(10);
                 }
-
                 // Serial.println();
                 Serial.print("[HTTP] connection closed or file end.\n");
-
             }
             f.close();
 
         } else {
             Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
-            rc = false;
+            rc = ERROR;
         }
-        
         http.end();
-        return rc;
+        return rc;	// success
     }
 }

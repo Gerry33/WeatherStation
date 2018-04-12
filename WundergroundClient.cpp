@@ -35,16 +35,18 @@ See more at http://blog.squix.ch
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include "WundergroundClient.h"
-#include <SimpleLog.h>
+
 
 bool usePM = false; // Set to true if you want to use AM/PM time disaply
 bool isPM = false; // JJG added ///////////
 
-extern SimpleLog  Logger;	// not the  fine style, but pragmatic
+#include <SimpleLog.h>
+// extern SimpleLog  Logger;	// not the  fine style, but pragmatic
 
 WundergroundClient::WundergroundClient(boolean _isMetric) {
 	isMetric = _isMetric;
 	parser.setListener(this);
+	parser.reset();
 }
 
 // Added by fowlerk, 12/22/16, as an option to change metric setting other than at instantiation
@@ -118,6 +120,7 @@ void WundergroundClient::updateAstronomyPWS(String apiKey, String language, Stri
 	doUpdate(wuBaseUri + "/api/" + apiKey + "/astronomy/lang:" + language + "/q/pws:" + pws + ".json");
 }
 // fowlerk added
+// gsi added: wunderground is completely useless for this, at least for civilised countries like most EU countries ... (except Poland, Hungary, Czech Rep.)
 void WundergroundClient::updateAlerts(String apiKey, String language, String country, String city) {
 	currentAlert = 0;
 	activeAlertsCnt = 0;
@@ -153,56 +156,83 @@ void WundergroundClient::updateAlertsPWS(String apiKey, String language, String 
 	doUpdate( wuBaseUri + "/api/" + apiKey + "/alerts/lang:" + language + "/q/pws:" + pws + ".json");
 }
 
+long start = -1;
+
 void WundergroundClient::doUpdate(String host, int port, String url) {
 
-	http.begin(host, port, url);
+	Logger.debug("[HTTP] GET host:<%s>, port:%d, url<%s>\n", host.c_str(), port, url.c_str());
+	httpClient.begin(host, port, url);
 	doUpdateIntern();
 }
 
-
 void WundergroundClient::doUpdate(String fullUri) {
 
-		http.begin(fullUri );
+		Logger.debug("[HTTP] GET start <%s>\n", fullUri.c_str());
+		start = millis();
+		httpClient.begin(fullUri );
 		doUpdateIntern();
 
 }
 
 void WundergroundClient::doUpdateIntern() {
 
-		parser.reset();
-
+	 	parser.reset();
 		bool isBody = false;
 		char c;
-		int size;
-		long start = millis();
+		int size,httpSize=-1;
+		int ownSize=0;
 		// http.setReuse(true);	// DO NOT USE gives hassle at least with TOMCAT server
 		// start connection and send HTTP header
-		int httpCode = http.GET();
+		int httpCode = httpClient.GET();
+		httpSize 	 = httpClient.getSize();	//  -1 if no info or > 0 when Content-Length is set by server;
+		Logger.debug("[HTTP] GET done, code: %d, size <%d>, time:%ld\n", httpCode, httpSize, millis() - start);
 
-		Logger.debug("[HTTP] GET end, code: %d, time:%ld\n", httpCode, millis() - start);
+		if ( httpCode > 0 && httpCode == 200 && httpSize  > 2000 ) {
+				start = millis();
 
-		if(httpCode > 0 && httpCode == 200) {
+			WiFiClient * streamClient = httpClient.getStreamPtr();
 
-			start = millis();
-			WiFiClient * client = http.getStreamPtr();
+			if ( streamClient == nullptr )
+				Logger.error("streamClient nullptr\n");
 
-			while(client->connected()) {
-				while((size = client->available()) > 0) {
-					c = client->read();
+			while(streamClient != nullptr  && streamClient->connected()) {
+				while((size = streamClient->available()) > 0) {
+					c = streamClient->read();
+					ownSize++;
 					if (c == '{' || c == '[') {
 						isBody = true;
 					}
 					if (isBody) {
-						parser.parse(c);
+						parser.parse(c); // This sometimes hangs
 					}
 				}
+				if ( millis() - start > 2000) {
+					Logger.error("Reading/Parsing Timeout:Code:%d, Size:%d, ownSize:%d,Time:%ld\n",
+									httpCode, httpSize, ownSize, millis() - start );
+					streamClient->stop();
+					streamClient=nullptr;// kill outer loop
+					break;
+				}
+			}
+			Logger.debug("Parsing:OK:Code:%d, Size:%d, ownSize:%d, Time:%ld, FreeHeap:%d\n",
+						httpCode, httpSize, ownSize, millis() - start, ESP.getFreeHeap());
+		}
+		else {
+			Logger.error("[HTTP]Error:httpCode:%d, Size:%d, ownSize:%d,\tFreeHeap:%d\n",
+					httpCode, httpSize, ownSize, ESP.getFreeHeap());
+
+			if ( httpCode > 0 && httpCode == 200){
+				WiFiClient * streamClient = httpClient.getStreamPtr();
+				Logger.error("Faulty Msg:\n");
+//				streamClient->println();
+				String r = streamClient->readString();
+				Logger.error(r);
+
 			}
 		}
-		else
-			Logger.error("[HTTP] GET error code:%d\n", httpCode);
-		http.end();
-		Logger.debug("Parsing end.Time:%ld\n", millis() - start);
-
+		// Logger.debug("[HTTP] doUpdateIntern Done:Time:%ld\n", millis() - start);
+		httpClient.end();
+		// parser.reset();
 	}
 
 
@@ -272,21 +302,22 @@ void WundergroundClient::whitespace(char c) {
 	// Serial.println("whitespace");
 }
 
-long startParsingTime = -1L;
 
+// long startParsingTime = -1L;
 void WundergroundClient::startDocument() {
-	// Serial.println("Parser:StartDocument");
-	if ( startParsingTime > 0)
-		Logger.error("ERROR:Parser:Start/End sequence failure.");
-	startParsingTime = millis();
 
+// Logger.debug ("Parser:StartDocument\n");
+//	if ( startParsingTime > 0)
+//		Logger.error("ERROR:Parser:Start/End sequence failure. Start parsing:%ld", startParsingTime);
+//	startParsingTime = millis();
 }
-
+/*
+ * this is very unreliable. sometimes it comes, sometimes not.
+ */
 void WundergroundClient::endDocument() {
-	// Logger.debug ("Parser:EndDocument:time:%ld\n", millis() - startParsingTime );
-	startParsingTime = 0L;
+//	Logger.debug ("Parser:EndDocument:time:%ld\n", millis() - startParsingTime );
+//	startParsingTime = 0L;
 }
-
 
 void WundergroundClient::key(String key) {
 	currentKey = String(key);
@@ -309,7 +340,9 @@ void WundergroundClient::key(String key) {
 		isCurrentObservation = false;	// fowlerk
 		isForecast = false;				// fowlerk
 		isAlerts = false;				// fowlerk
-		// Serial.println("Detected simpleforecast");
+		currentForecastPeriod 			= -1; // with first appearancee of "pretty" -date set to '0'
+		// Logger.debug("Detected simpleforecast.\n");
+
 	}
 	//  Added by fowlerk...
 	if (currentKey == "current_observation") {
@@ -328,12 +361,14 @@ void WundergroundClient::key(String key) {
 }
 
 void WundergroundClient::value(String value) {
+
 	if (currentKey == "local_epoch") {
 	// if (currentKey ==      "epoch") {
 		localEpoc = value.toInt();
 		localMillisAtUpdate = millis();
 	}
 
+	/* gsi: not needed
 	// JJG added ... //////////////////////// search for keys /////////////////////////
 	if (currentKey == "percentIlluminated") {
 		moonPctIlum = value;
@@ -426,6 +461,14 @@ void WundergroundClient::value(String value) {
 			moonsetTime += ":" + String(tempMinBuff);		// fowlerk add for formatting, 12/22/16
 		}
 	}
+*/
+// does not work; tag not detected
+//	if (currentKey == "date" && isSimpleForecast) {
+//		currentForecastPeriod++;
+//		Logger.debug ("Idx@Date:" + String (currentForecastPeriod));
+//
+//	}
+
 
 	if (currentKey == "wind_mph" && !isMetric) {
 		windSpeed = value + "mph";
@@ -460,11 +503,15 @@ void WundergroundClient::value(String value) {
 		date = value.substring(0, 16);
 	}
 
+	// observation_time_rfc822	"Fri, 22 Dec 2017 16:34:46 +0100"
 	if (currentKey == "observation_time_rfc822") {
-		observationDate = value.substring(0, 16);
+	 // observationDate = value.substring(0, 16);
+		observationDate = value;
+		Logger.debug("observationDate:"+ observationDate);
 	}
 	// Begin add, fowlerk...04-Dec-2016
 	if (currentKey == "observation_time") {
+		// Logger.debug("observation_time:"+ value);
 		observationTime = value;
 	}
 	// end add, fowlerk
@@ -475,25 +522,7 @@ void WundergroundClient::value(String value) {
 	if (currentKey == "temp_c" && isMetric) {
 		currentTemp = value;
 	}
-	if (currentKey == "icon") {
 
-//		Serial.println("Icon: period:"		+ String(currentForecastPeriod)
-//				+ ", icon name:<" 			+ value
-//				+ ">, currentParent:<" 		+ currentParent
-//				+ ">, isSimpleForecast:" 	+ String ( isSimpleForecast)
-//				+ ">, isForecast:" 			+ String ( isForecast) );
-
-		// see above: if (currentKey == "simpleforecast") { ...
-
-		if (isForecast== false && isSimpleForecast == true  && currentForecastPeriod < MAX_FORECAST_PERIODS) {
-			// Serial.println("Forecast icon: idx:"+  String(currentForecastPeriod) + ", icon name:<" + value + ">");
-			forecastIcon[currentForecastPeriod] = value;
-		}
-		// if (!isForecast) {													// Removed by fowlerk
-		if (isCurrentObservation && !(isForecast || isSimpleForecast)) {		// Added by fowlerk
-			weatherIcon = value;
-		}
-	}
 	if (currentKey == "weather") {
 		weatherText = value;
 	}
@@ -506,6 +535,7 @@ void WundergroundClient::value(String value) {
 	if (currentKey == "pressure_in" && !isMetric) {
 		pressure = value + "in";
 	}
+	/*
 	// fowlerk added...
 	if (currentKey == "feelslike_f" && !isMetric) {
 		feelslike = value;
@@ -514,12 +544,13 @@ void WundergroundClient::value(String value) {
 	if (currentKey == "feelslike_c" && isMetric) {
 		feelslike = value;
 	}
-
+*/
 	if (currentKey == "UV") {
 		UV = value;
 	}
 
-	// Active alerts...added 18-Dec-2016
+	/* gsi: not needed
+	/ Active alerts...added 18-Dec-2016
 	if (currentKey == "type" && isAlerts) {
 		activeAlertsCnt++;
 		currentAlert++;
@@ -597,9 +628,26 @@ void WundergroundClient::value(String value) {
 	if (currentKey == "precip_today_in" && !isMetric) {
 		precipitationToday = value + "in";
 	}
-	if (currentKey == "period") {
-		currentForecastPeriod = value.toInt();
+*/
+
+	//this appears too late in the json object to server as an index.
+//	if (currentKey == "period") {
+//		currentForecastPeriod = value.toInt();
+//		Logger.debug("Idx(Period):" + String (currentForecastPeriod));
+//	}
+
+	if (currentKey == "icon") {
+
+		if (isForecast== false && isSimpleForecast == true  && currentForecastPeriod < MAX_FORECAST_PERIODS) {
+			// Logger.debug("Forecast icon: idx:"+  String(currentForecastPeriod) + ", icon name:<" + value + ">");
+			forecastIcon[currentForecastPeriod] = value;
+		}
+		// if (!isForecast) {													// Removed by fowlerk
+		if (isCurrentObservation && !(isForecast || isSimpleForecast)) {		// Added by fowlerk
+			weatherIcon = value;
+		}
 	}
+
 	// Modified below line to add check to ensure we are processing the 10-day forecast
 	// before setting the forecastTitle (day of week of the current forecast day).
 	// (The keyword title is used in both the current observation and the 10-day forecast.)
@@ -643,16 +691,15 @@ void WundergroundClient::value(String value) {
 	if (currentKey == "celsius" && isMetric && currentForecastPeriod < MAX_FORECAST_PERIODS) {
 
 		if (currentParent == "high") {
-			// Serial.println("TempHigh:idx" + String(currentForecastPeriod)+ ": " + value);
-		 // forecastHighTemp[dailyForecastPeriod] = value; gsi
+			// Logger.debug("TempHigh:idx:" + String(currentForecastPeriod)+ ": " + value);
 			forecastHighTemp[currentForecastPeriod] = value;
 		}
 		if (currentParent == "low") {
-		 // forecastLowTemp[dailyForecastPeriod] = value;
 			forecastLowTemp[currentForecastPeriod] = value;
-			// Serial.println("TempLow:idx" + String(currentForecastPeriod)+ ": " + value);
+			// Logger.debug("TempLow:idx:" + String(currentForecastPeriod)+ " : " + value);
 		}
 	}
+	/* gsi:not needed nowhere
 	// fowlerk added...to pull month/day from the forecast period
 	if (currentKey == "month" && isSimpleForecast && currentForecastPeriod < MAX_FORECAST_PERIODS)  {
 		//	Added by fowlerk to handle transition from txtforecast to simpleforecast, as
@@ -664,6 +711,7 @@ void WundergroundClient::value(String value) {
 		forecastMonth[currentForecastPeriod] = value;
 	}
 
+
 	if (currentKey == "day" && isSimpleForecast && currentForecastPeriod < MAX_FORECAST_PERIODS)  {
 		//	Added by fowlerk to handle transition from txtforecast to simpleforecast, as
 		//	the key "period" doesn't appear until after some of the key values needed and is
@@ -674,14 +722,21 @@ void WundergroundClient::value(String value) {
 		forecastDay[currentForecastPeriod] = value;
 		// Serial.println("---currentForecastPeriod:" + String(currentForecastPeriod) + ",value:"+ value);
 	}
-	// gsi:new -----: ??? : currentForecastPeriod ist eins zu niedrig ???
-	// if (currentKey == "weekday_short" && isSimpleForecast && currentForecastPeriod < MAX_FORECAST_PERIODS)  {
-	  if (currentKey == "weekday_short" 					 && currentForecastPeriod < MAX_FORECAST_PERIODS)  {
-		if (isSimpleForecast && currentForecastPeriod == 19) {
-			currentForecastPeriod = 0;
+*/
+	// bug somewhere in parser
+	if (isSimpleForecast){
+
+		if (currentKey == "pretty")  {
+			currentForecastPeriod++;
+			// Logger.debug("Pretty:idx:" + String(currentForecastPeriod) + ":" + value);
+			forecastDate [currentForecastPeriod ] = value;
 		}
-		forecastWeekDay[currentForecastPeriod + 1] = value;
-		// Serial.println("Weekday:Idx:" + String(currentForecastPeriod+1) + ",value:"+ value);
+
+		// gsi:new -----: ??? : currentForecastPeriod ist eins zu niedrig ???
+		if (currentKey == "weekday_short" && currentForecastPeriod < MAX_FORECAST_PERIODS)  {
+			forecastWeekDay[currentForecastPeriod  ] = value;
+			// Logger.debug("Weekday:Idx:" + String(currentForecastPeriod) + ",value:"+ value +"\n");
+		}
 	}
 	// end fowlerk add
 }
@@ -748,7 +803,8 @@ long WundergroundClient::getCurrentEpoch() {
 	return localEpoc + ((millis() - localMillisAtUpdate) / 1000);
 }
 
-// JJG added ... /////////////////////////////////////////////////////////////////////////////////////////
+/* gsi: not needed
+// JJG added ... /////////////////
 String WundergroundClient::getMoonPctIlum() {
 	return moonPctIlum;
 }
@@ -776,7 +832,7 @@ String WundergroundClient::getMoonriseTime() {
 String WundergroundClient::getMoonsetTime() {
 	return moonsetTime;
 }
-
+*/
 String WundergroundClient::getWindSpeed() {
 	return windSpeed;
 }
@@ -822,7 +878,7 @@ String WundergroundClient::getUV() {
 String WundergroundClient::getObservationTime() {
 	return observationTime;
 }
-
+/* gsi: not needed
 // Active alerts...added 18-Dec-2016
 String WundergroundClient::getActiveAlerts(int alertIndex) {
 	return activeAlerts[alertIndex];
@@ -865,7 +921,7 @@ int WundergroundClient::getActiveAlertsCnt() {
 }
 
 // end fowlerk add
-
+*/
 
 String WundergroundClient::getPrecipitationToday() {
 	return precipitationToday;

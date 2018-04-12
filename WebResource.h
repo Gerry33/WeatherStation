@@ -30,12 +30,15 @@ See more at http://blog.squix.ch
 
 typedef void (*ProgressCallback)(String fileName, int16_t bytesDownloaded, int16_t bytesTotal);
 
+typedef enum {SUCCESS, ERROR, IGNORED} WEB_RC ;
+
 class WebResource {
   public:
-    WebResource();
-    bool downloadFile(String url, String filename, ProgressCallback progressCallback);
-    bool downloadFile(String url, String filename);
 
+    WebResource();
+    WEB_RC downloadFile(String url, String filename, ProgressCallback progressCallback);
+    WEB_RC downloadFile(String url, String filename);
+    String currentURL;
 
   private:
     ESP8266WiFiMulti _wifiMulti;
